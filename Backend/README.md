@@ -167,6 +167,155 @@ console.log(data);
 
 ---
 
+## User Login Endpoint
+
+### Endpoint Description
+The `/users/login` endpoint is used to authenticate an existing user in the application. It validates the incoming credentials, verifies the password against the stored hashed password, and returns an authentication token upon successful login.
+
+---
+
+## POST /login
+
+### Request Method
+```
+POST /users/login
+```
+
+### Required Data (Request Body)
+The endpoint expects a JSON object with the following fields:
+
+| Field | Type | Required | Validation Rules | Description |
+|-------|------|----------|------------------|-------------|
+| `email` | String | Yes | Must be a valid email format | User's registered email address |
+| `password` | String | Yes | Minimum 6 characters | User's password |
+
+### Request Example
+```json
+{
+  "email": "user@example.com",
+  "password": "securePassword123"
+}
+```
+
+---
+
+## Response
+
+### Success Response (Status Code: 200 OK)
+When the user is successfully authenticated, the endpoint returns:
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "_id": "507f1f77bcf86cd799439011",
+    "fullname": {
+      "firstname": "John",
+      "lastname": "Doe"
+    },
+    "email": "user@example.com",
+    "socketId": null
+  }
+}
+```
+
+**Details:**
+- `token`: JWT authentication token that expires in 1 hour
+- `user`: The authenticated user object (password is not included in response)
+
+### Error Response (Status Code: 400 Bad Request)
+When validation fails, the endpoint returns:
+
+```json
+{
+  "success": false,
+  "message": "Validation errors",
+  "errors": [
+    {
+      "param": "email",
+      "msg": "Invalid email",
+      "value": "invalid-email"
+    }
+  ]
+}
+```
+
+### Error Response (Status Code: 401 Unauthorized)
+When credentials are invalid, the endpoint returns:
+
+```json
+{
+  "message": "Invalid email or password"
+}
+```
+
+---
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `200 OK` | User successfully authenticated and token generated |
+| `400 Bad Request` | Validation failed (invalid email format, password too short, missing fields) |
+| `401 Unauthorized` | Invalid email or password |
+| `500 Internal Server Error` | Server error during authentication or database operations |
+
+---
+
+## Validation Rules Summary
+
+1. **Email**
+   - Must be a valid email format
+   - Must exist in the database (registered user)
+
+2. **Password**
+   - Required field
+   - Minimum 6 characters
+   - Must match the hashed password stored in database
+
+---
+
+## Authentication Token
+
+Upon successful login, the user receives a JWT token that:
+- Contains the user's MongoDB ID (`_id`)
+- Expires in 1 hour
+- Can be used for subsequent authenticated requests
+- Should be stored and sent in request headers for future API calls
+
+---
+
+## Usage Example
+
+### Using cURL
+```bash
+curl -X POST http://localhost:3000/users/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securePassword123"
+  }'
+```
+
+### Using JavaScript/Fetch
+```javascript
+const response = await fetch('/users/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'securePassword123'
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+---
+
 ## Security Notes
 
 - Passwords are hashed using bcrypt with 10 salt rounds before storage
@@ -174,3 +323,4 @@ console.log(data);
 - JWT tokens expire after 1 hour
 - Email addresses must be unique in the system
 - Input validation is enforced on all required fields
+- Password comparison uses the bcrypt comparePassword method to securely verify stored hashes
