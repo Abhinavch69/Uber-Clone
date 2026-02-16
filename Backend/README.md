@@ -752,9 +752,430 @@ console.log(data);
 
 ---
 
-## Additional Captain Endpoints (Coming Soon)
+## Captain Login Endpoint
 
-The following captain endpoints are planned for future development:
-- `GET /captains/profile` - Retrieve captain profile information
-- `POST /captains/login` - Captain login endpoint
-- `GET /captains/logout` - Captain logout endpoint
+### Endpoint Description
+The `/captains/login` endpoint is used to authenticate an existing captain in the application. It validates the incoming credentials, verifies the password against the stored hashed password, and returns an authentication token upon successful login.
+
+---
+
+## POST /captains/login
+
+### Request Method
+```
+POST /captains/login
+```
+
+### Required Data (Request Body)
+The endpoint expects a JSON object with the following fields:
+
+| Field | Type | Required | Validation Rules | Description |
+|-------|------|----------|------------------|-------------|
+| `email` | String | Yes | Must be a valid email format | Captain's registered email address |
+| `password` | String | Yes | Minimum 6 characters | Captain's password |
+
+### Request Example
+```json
+{
+  "email": "captain@example.com",
+  "password": "capSecurePass123"
+  /* // Email must be valid email format
+     // Password must be at least 6 characters long
+     // Credentials must match a registered captain */
+}
+```
+
+---
+
+## Response
+
+### Success Response (Status Code: 200 OK)
+When the captain is successfully authenticated, the endpoint returns:
+
+```json
+{
+  "captain": {
+    /* // Captain's MongoDB document ID */
+    "_id": "507f1f77bcf86cd799439012",
+    "fullname": {
+      /* // Captain's first name (min 3 characters) */
+      "firstname": "James",
+      /* // Captain's last name (optional, min 3 chars if provided) */
+      "lastname": "Wilson"
+    },
+    /* // Captain's registered email (unique in database) */
+    "email": "captain@example.com",
+    /* // Vehicle information */
+    "vehicle": {
+      /* // Vehicle color (min 3 characters) */
+      "color": "Black",
+      /* // Vehicle license plate (min 3 characters) */
+      "plate": "ABC123",
+      /* // Passenger capacity (minimum 1) */
+      "capacity": 4,
+      /* // Vehicle type: 'car', 'motorcycle', or 'auto' */
+      "vehicleType": "car"
+    },
+    /* // Real-time socket connection ID (null if not connected) */
+    "socketId": null,
+    /* // Captain availability status: 'active' or 'inactive' */
+    "status": "inactive",
+    /* // Captain's current location coordinates */
+    "location": {
+      "lat": null,
+      "lng": null
+    }
+  },
+  /* // JWT token valid for 1 hour, used for authenticated requests */
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Details:**
+- `token`: JWT authentication token that expires in 1 hour
+- `captain`: The authenticated captain object with vehicle information (password is not included in response)
+
+### Error Response (Status Code: 400 Bad Request) - Validation Errors
+When validation fails, the endpoint returns:
+
+```json
+{
+  "errors": [
+    {
+      "type": "field",
+      "value": "invalid-email",
+      "msg": "Invalid email",
+      "path": "email",
+      "location": "body"
+      /* // Email field failed validation */
+    },
+    {
+      "type": "field",
+      "value": "12345",
+      "msg": "Password must be at least 6 characters long",
+      "path": "password",
+      "location": "body"
+      /* // Password must be minimum 6 characters */
+    }
+  ]
+}
+```
+
+### Error Response (Status Code: 400 Bad Request) - Invalid Credentials
+When email or password is incorrect:
+
+```json
+{
+  "message": "Invalid email or password"
+  /* // Either the email doesn't exist or password doesn't match */
+}
+```
+
+---
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `200 OK` | Captain successfully authenticated and token generated |
+| `400 Bad Request` | Validation failed (invalid email format, password too short, missing fields) OR invalid credentials |
+| `500 Internal Server Error` | Server error during authentication or database operations |
+
+---
+
+## Validation Rules Summary
+
+1. **Email**
+   - Must be a valid email format
+   - Must exist in the database (registered captain)
+
+2. **Password**
+   - Required field
+   - Minimum 6 characters
+   - Must match the hashed password stored in database
+
+---
+
+## Authentication Token
+
+Upon successful login, the captain receives a JWT token that:
+- Contains the captain's MongoDB ID (`_id`)
+- Expires in 1 hour
+- Can be used for subsequent authenticated requests
+- Should be stored and sent in request headers for future API calls
+
+---
+
+## Usage Example
+
+### Using cURL
+```bash
+curl -X POST http://localhost:3000/captains/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "captain@example.com",
+    "password": "capSecurePass123"
+  }'
+```
+
+### Using JavaScript/Fetch
+```javascript
+const response = await fetch('/captains/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    email: 'captain@example.com',
+    password: 'capSecurePass123'
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+---
+
+## Captain Profile Endpoint
+
+### Endpoint Description
+The `/captains/profile` endpoint is used to retrieve the authenticated captain's profile information. It requires a valid authentication token and returns the current captain's details including vehicle information and status.
+
+---
+
+## GET /captains/profile
+
+### Request Method
+```
+GET /captains/profile
+```
+
+### Required Headers
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| `Authorization` | String | Yes | Bearer token received from login/register endpoint (format: "Bearer <token>") |
+| OR `Cookie` | String | Yes | Token can alternatively be sent as a cookie named "token" |
+
+### Request Example
+```bash
+curl -X GET http://localhost:3000/captains/profile \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  /* // Must provide valid JWT token from login/register */
+```
+
+---
+
+## Response
+
+### Success Response (Status Code: 200 OK)
+When the token is valid and captain is authenticated, the endpoint returns:
+
+```json
+{
+  "captain": {
+    /* // Captain's MongoDB document ID */
+    "_id": "507f1f77bcf86cd799439012",
+    "fullname": {
+      /* // Captain's first name (min 3 characters) */
+      "firstname": "James",
+      /* // Captain's last name (optional, min 3 chars if provided) */
+      "lastname": "Wilson"
+    },
+    /* // Captain's registered email (unique in database) */
+    "email": "captain@example.com",
+    /* // Vehicle information */
+    "vehicle": {
+      /* // Vehicle color (min 3 characters) */
+      "color": "Black",
+      /* // Vehicle license plate (min 3 characters) */
+      "plate": "ABC123",
+      /* // Passenger capacity (minimum 1) */
+      "capacity": 4,
+      /* // Vehicle type: 'car', 'motorcycle', or 'auto' */
+      "vehicleType": "car"
+    },
+    /* // Real-time socket connection ID (null if not connected) */
+    "socketId": null,
+    /* // Captain availability status: 'active' or 'inactive' */
+    "status": "inactive",
+    /* // Captain's current location coordinates */
+    "location": {
+      /* // Latitude coordinate (null if not updated) */
+      "lat": null,
+      /* // Longitude coordinate (null if not updated) */
+      "lng": null
+    }
+  }
+}
+```
+
+**Details:**
+- `captain`: The authenticated captain object containing their profile information, vehicle details, and current status
+
+### Error Response (Status Code: 401 Unauthorized)
+When the token is invalid or missing, the endpoint returns:
+
+```json
+{
+  "message": "Unauthorized"
+  /* // Invalid, expired, or missing authentication token */
+}
+```
+
+---
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `200 OK` | Captain authenticated successfully and profile retrieved |
+| `401 Unauthorized` | Invalid, expired, or missing authentication token |
+| `500 Internal Server Error` | Server error during profile retrieval |
+
+---
+
+## Usage Example
+
+### Using JavaScript/Fetch with Bearer Token
+```javascript
+const token = localStorage.getItem('token');
+
+const response = await fetch('/captains/profile', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+### Using JavaScript/Fetch with Cookie
+```javascript
+const response = await fetch('/captains/profile', {
+  method: 'GET',
+  credentials: 'include' // Automatically includes cookies
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+---
+
+## Captain Logout Endpoint
+
+### Endpoint Description
+The `/captains/logout` endpoint is used to log out an authenticated captain. It clears the authentication cookie and adds the captain's token to a blacklist to prevent further use.
+
+---
+
+## GET /captains/logout
+
+### Request Method
+```
+GET /captains/logout
+```
+
+### Required Headers
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| `Authorization` | String | Yes | Bearer token received from login/register endpoint (format: "Bearer <token>") |
+| OR `Cookie` | String | Yes | Token can alternatively be sent as a cookie named "token" |
+
+### Request Example
+```bash
+curl -X GET http://localhost:3000/captains/logout \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  /* // Must provide valid JWT token from login/register */
+```
+
+---
+
+## Response
+
+### Success Response (Status Code: 200 OK)
+When the captain is successfully logged out, the endpoint returns:
+
+```json
+{
+  "message": "Logged out successfully"
+  /* // Captain successfully logged out, token blacklisted */
+}
+```
+
+**Details:**
+- The authentication token is cleared from cookies
+- The token is added to the blacklist and cannot be reused
+- Subsequent requests with this token will be rejected
+
+### Error Response (Status Code: 401 Unauthorized)
+When the token is invalid or missing, the endpoint returns:
+
+```json
+{
+  "message": "Unauthorized"
+  /* // Invalid, expired, or missing authentication token */
+}
+```
+
+---
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `200 OK` | Captain successfully logged out |
+| `401 Unauthorized` | Invalid, expired, or missing authentication token |
+| `500 Internal Server Error` | Server error during logout process |
+
+---
+
+## Usage Example
+
+### Using JavaScript/Fetch with Bearer Token
+```javascript
+const token = localStorage.getItem('token');
+
+const response = await fetch('/captains/logout', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+const data = await response.json();
+console.log(data);
+
+// Clear token from storage after successful logout
+localStorage.removeItem('token');
+```
+
+### Using JavaScript/Fetch with Cookie
+```javascript
+const response = await fetch('/captains/logout', {
+  method: 'GET',
+  credentials: 'include' // Automatically includes cookies
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+---
+
+## Captain Security Notes
+
+- Passwords are hashed using bcrypt with 10 salt rounds before storage
+- Passwords are never returned in API responses
+- JWT tokens expire after 24 hours
+- Email addresses must be unique in the system (one captain per email)
+- Input validation is enforced on all required fields
+- Password comparison uses the bcrypt comparePassword method to securely verify stored hashes
+- Blacklisted tokens are added to the database to prevent reuse after logout
+- Authentication is required for accessing profile and logout endpoints
+- Vehicle information is mandatory for captain registration
+- Captain status defaults to 'inactive' and must be explicitly activated
+- Location tracking is available for active captains
