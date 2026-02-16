@@ -525,3 +525,236 @@ console.log(data);
 - Password comparison uses the bcrypt comparePassword method to securely verify stored hashes
 - Blacklisted tokens are added to the database to prevent reuse after logout
 - Authentication is required for accessing profile and logout endpoints
+
+---
+
+# Captain Registration API Documentation
+
+## Captain Registration Endpoint
+
+### Endpoint Description
+The `/captains/register` endpoint is used to register a new captain (driver) in the application. It validates the incoming data, hashes the password, creates a captain record along with their vehicle information in the database, and returns an authentication token.
+
+---
+
+## POST /register
+
+### Request Method
+```
+POST /captains/register
+```
+
+### Required Data (Request Body)
+The endpoint expects a JSON object with the following fields:
+
+| Field | Type | Required | Validation Rules | Description |
+|-------|------|----------|------------------|-------------|
+| `email` | String | Yes | Must be a valid email format | Captain's email address (must be unique) |
+| `fullname.firstname` | String | Yes | Minimum 3 characters | Captain's first name |
+| `fullname.lastname` | String | No | Minimum 3 characters (if provided) | Captain's last name |
+| `password` | String | Yes | Minimum 6 characters | Captain's password (will be hashed before storage) |
+| `vehicle.color` | String | Yes | Minimum 3 characters | Vehicle color |
+| `vehicle.plate` | String | Yes | Minimum 3 characters | Vehicle license plate |
+| `vehicle.capacity` | Integer | Yes | Minimum 1 | Vehicle passenger capacity |
+| `vehicle.vehicleType` | String | Yes | Must be 'car', 'motorcycle', or 'auto' | Type of vehicle being registered |
+
+### Request Example
+```json
+{
+  "email": "captain@example.com",
+  "fullname": {
+    "firstname": "James",
+    "lastname": "Wilson"
+  },
+  "password": "capSecurePass123",
+  "vehicle": {
+    "color": "Black",
+    "plate": "ABC123",
+    "capacity": 4,
+    "vehicleType": "car"
+  }
+}
+```
+
+---
+
+## Response
+
+### Success Response (Status Code: 201 Created)
+When the captain is successfully registered, the endpoint returns:
+
+```json
+{
+  "captain": {
+    "_id": "507f1f77bcf86cd799439012",
+    "fullname": {
+      "firstname": "James",
+      "lastname": "Wilson"
+    },
+    "email": "captain@example.com",
+    "vehicle": {
+      "color": "Black",
+      "plate": "ABC123",
+      "capacity": 4,
+      "vehicleType": "car"
+    },
+    "socketId": null
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Details:**
+- `token`: JWT authentication token that expires in 1 hour
+- `captain`: The newly created captain object with vehicle information (password is not included in response)
+
+### Error Response (Status Code: 400 Bad Request) - Validation Errors
+When validation fails, the endpoint returns:
+
+```json
+{
+  "errors": [
+    {
+      "type": "field",
+      "value": "invalid-email",
+      "msg": "Invalid email",
+      "path": "email",
+      "location": "body"
+    },
+    {
+      "type": "field",
+      "value": "ab",
+      "msg": "Firstname must be at least 3 characters long",
+      "path": "fullname.firstname",
+      "location": "body"
+    },
+    {
+      "type": "field",
+      "value": "car",
+      "msg": "Vehicle type must be either car, motorcycle, or auto",
+      "path": "vehicle.vehicleType",
+      "location": "body"
+    }
+  ]
+}
+```
+
+### Error Response (Status Code: 400 Bad Request) - Captain Already Exists
+When a captain with the same email already exists:
+
+```json
+{
+  "message": "Captain already exists"
+}
+```
+
+---
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `201 Created` | Captain successfully registered and token generated |
+| `400 Bad Request` | Validation failed (invalid email, password too short, missing fields, invalid vehicle type) OR captain already exists |
+| `500 Internal Server Error` | Server error during captain creation or database operations |
+
+---
+
+## Validation Rules Summary
+
+1. **Email**
+   - Must be a valid email format
+   - Must be unique (no duplicate emails in database)
+
+2. **Firstname**
+   - Required field
+   - Minimum 3 characters
+
+3. **Lastname**
+   - Optional field
+   - If provided, must be at least 3 characters
+
+4. **Password**
+   - Required field
+   - Minimum 6 characters
+   - Stored as hashed value in database using bcrypt
+
+5. **Vehicle Information**
+   - All vehicle fields are required for captain registration
+   - **Color**: Minimum 3 characters
+   - **Plate**: Minimum 3 characters (vehicle license plate)
+   - **Capacity**: Integer value with minimum capacity of 1 passenger
+   - **Vehicle Type**: Must be one of the following:
+     - `car` - Standard car/sedan
+     - `motorcycle` - Motorcycle or scooter
+     - `auto` - Auto-rickshaw
+
+---
+
+## Authentication Token
+
+Upon successful registration, the captain receives a JWT token that:
+- Contains the captain's MongoDB ID (`_id`)
+- Expires in 1 hour
+- Can be used for subsequent authenticated requests
+- Should be stored and sent in request headers for future API calls
+
+---
+
+## Usage Example
+
+### Using cURL
+```bash
+curl -X POST http://localhost:3000/captains/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newcaptain@example.com",
+    "fullname": {
+      "firstname": "Michael",
+      "lastname": "Brown"
+    },
+    "password": "mySecurePass123",
+    "vehicle": {
+      "color": "White",
+      "plate": "XYZ789",
+      "capacity": 4,
+      "vehicleType": "car"
+    }
+  }'
+```
+
+### Using JavaScript/Fetch
+```javascript
+const response = await fetch('/captains/register', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    email: 'newcaptain@example.com',
+    fullname: {
+      firstname: 'Michael',
+      lastname: 'Brown'
+    },
+    password: 'mySecurePass123',
+    vehicle: {
+      color: 'White',
+      plate: 'XYZ789',
+      capacity: 4,
+      vehicleType: 'car'
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+---
+
+## Additional Captain Endpoints (Coming Soon)
+
+The following captain endpoints are planned for future development:
+- `GET /captains/profile` - Retrieve captain profile information
+- `POST /captains/login` - Captain login endpoint
+- `GET /captains/logout` - Captain logout endpoint

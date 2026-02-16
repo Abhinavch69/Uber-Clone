@@ -15,6 +15,11 @@ module.exports.registerUser = async (req, res, next) => {
 
   const { email, password, fullname } = req.body;
 
+  const isUserAlreadyExist = await userModel.findOne({ email });
+  if (isUserAlreadyExist) {
+    return res.status(400).json({ message: "User already exists" });
+  }
+
   //userModel.hashPassword is used instad of user.hashPassword because hashPassword is a static method defined in the user model, which can be called directly on the model itself without needing an instance of a user.
   const hashedPassword = await userModel.hashPassword(password);
 
