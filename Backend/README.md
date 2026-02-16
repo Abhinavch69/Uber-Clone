@@ -316,6 +316,205 @@ console.log(data);
 
 ---
 
+## User Profile Endpoint
+
+### Endpoint Description
+The `/users/profile` endpoint is used to retrieve the authenticated user's profile information. It requires a valid authentication token and returns the current user's details.
+
+---
+
+## GET /profile
+
+### Request Method
+```
+GET /users/profile
+```
+
+### Required Headers
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| `Authorization` | String | Yes | Bearer token received from login/register endpoint (format: "Bearer <token>") |
+| OR `Cookie` | String | Yes | Token can alternatively be sent as a cookie named "token" |
+
+### Request Example
+```bash
+curl -X GET http://localhost:3000/users/profile \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+---
+
+## Response
+
+### Success Response (Status Code: 200 OK)
+When the token is valid and user is authenticated, the endpoint returns:
+
+```json
+{
+  "user": {
+    "_id": "507f1f77bcf86cd799439011",
+    "fullname": {
+      "firstname": "John",
+      "lastname": "Doe"
+    },
+    "email": "user@example.com",
+    "socketId": null
+  }
+}
+```
+
+**Details:**
+- `user`: The authenticated user object containing their profile information
+
+### Error Response (Status Code: 401 Unauthorized)
+When the token is invalid or missing, the endpoint returns:
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+---
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `200 OK` | User authenticated successfully and profile retrieved |
+| `401 Unauthorized` | Invalid, expired, or missing authentication token |
+| `500 Internal Server Error` | Server error during profile retrieval |
+
+---
+
+## Usage Example
+
+### Using JavaScript/Fetch with Bearer Token
+```javascript
+const token = localStorage.getItem('token');
+
+const response = await fetch('/users/profile', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+### Using JavaScript/Fetch with Cookie
+```javascript
+const response = await fetch('/users/profile', {
+  method: 'GET',
+  credentials: 'include' // Automatically includes cookies
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+---
+
+## User Logout Endpoint
+
+### Endpoint Description
+The `/users/logout` endpoint is used to log out an authenticated user. It clears the authentication cookie and adds the user's token to a blacklist to prevent further use.
+
+---
+
+## GET /logout
+
+### Request Method
+```
+GET /users/logout
+```
+
+### Required Headers
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| `Authorization` | String | Yes | Bearer token received from login/register endpoint (format: "Bearer <token>") |
+| OR `Cookie` | String | Yes | Token can alternatively be sent as a cookie named "token" |
+
+### Request Example
+```bash
+curl -X GET http://localhost:3000/users/logout \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+---
+
+## Response
+
+### Success Response (Status Code: 200 OK)
+When the user is successfully logged out, the endpoint returns:
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+**Details:**
+- The authentication token is cleared from cookies
+- The token is added to the blacklist and cannot be reused
+- Subsequent requests with this token will be rejected
+
+### Error Response (Status Code: 401 Unauthorized)
+When the token is invalid or missing, the endpoint returns:
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+---
+
+## Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `200 OK` | User successfully logged out |
+| `401 Unauthorized` | Invalid, expired, or missing authentication token |
+| `500 Internal Server Error` | Server error during logout process |
+
+---
+
+## Usage Example
+
+### Using JavaScript/Fetch with Bearer Token
+```javascript
+const token = localStorage.getItem('token');
+
+const response = await fetch('/users/logout', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+const data = await response.json();
+console.log(data);
+
+// Clear token from storage after successful logout
+localStorage.removeItem('token');
+```
+
+### Using JavaScript/Fetch with Cookie
+```javascript
+const response = await fetch('/users/logout', {
+  method: 'GET',
+  credentials: 'include' // Automatically includes cookies
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+---
+
 ## Security Notes
 
 - Passwords are hashed using bcrypt with 10 salt rounds before storage
@@ -324,3 +523,5 @@ console.log(data);
 - Email addresses must be unique in the system
 - Input validation is enforced on all required fields
 - Password comparison uses the bcrypt comparePassword method to securely verify stored hashes
+- Blacklisted tokens are added to the database to prevent reuse after logout
+- Authentication is required for accessing profile and logout endpoints
