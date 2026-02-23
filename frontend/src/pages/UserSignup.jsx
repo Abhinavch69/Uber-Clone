@@ -1,28 +1,66 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useContext, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import uberLogo from "../assets/uber-logo.png";
+import axios from "axios";
+import { UserDataContext } from "../context/UserContext.jsx";
 
 const UserSignup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
-  const [userData, setUserData] = useState({});
 
-  const submitHandler = (e) => {
+  const navigate = useNavigate();
+  const { user, setUser } = useContext(UserDataContext);
+
+  const submitHandler = async (e) => {
     e.preventDefault();
-    setUserData({
+    const newUser = {
       fullname: {
         firstname: firstname,
         lastname: lastname,
       },
       email: email,
       password: password,
-    });
-    setEmail("");
-    setPassword("");
-    setFirstname("");
-    setLastname("");
+    };
+
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BASE_URL}/users/register`,
+        newUser,
+      );
+
+      if (response.status === 201) {
+        const data = response.data;
+        setUser(data.user);
+        localStorage.setItem("token", data.token);
+        
+        // Clear form before navigation
+        setEmail("");
+        setPassword("");
+        setFirstname("");
+        setLastname("");
+        
+        // Navigate after successful signup
+        navigate("/home");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      
+      let errorMessage = "Error signing up";
+      
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        // Extract validation errors from backend
+        const validationErrors = error.response.data.errors.map(err => err.msg).join(", ");
+        errorMessage = validationErrors;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
+    }
   };
   return (
     <div>
